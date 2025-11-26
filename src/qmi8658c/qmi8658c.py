@@ -1,36 +1,15 @@
-# SPDX-FileCopyrightText: 2017 Scott Shawcroft, written for Adafruit Industries
-# SPDX-FileCopyrightText: Copyright (c) 2023 Taiki Komoda for JINS Inc.
-#
-# SPDX-License-Identifier: MIT
 """
-`qmi8658c`
-================================================================================
-
 MicroPython helper library for the QMI8658C 6-DoF Accelerometer and Gyroscope
+Adapted from CircuitPython driver by Taiki Komoda
 
-
-* Author(s): Taiki Komoda
-
-Implementation Notes
---------------------
-
-**Software and Dependencies:**
-
-* MicroPython firmware for the supported boards: https://micropython.org/download/
+* Author(s): Sebastian Romero
 """
-
-# imports
-
-__version__ = "0.0.0+auto.0"
-__repo__ = "https://github.com/jins-tkomoda/CircuitPython_QMI8658C.git"
-
 
 import struct
 from math import radians
 from time import sleep
 
 from micropython import const  # type: ignore
-
 
 _QMI8658C_WHO_AM_I = const(0x0)  # WHO_AM_I register
 _QMI8658C_REVISION_ID = const(0x1)  # Divice ID register
@@ -157,11 +136,11 @@ class QMI8658C:  # pylint: disable=too-many-instance-attributes
             from machine import I2C, Pin
             import qmi8658c
 
-            i2c = I2C(0, scl=Pin(1), sda=Pin(0))
+            i2c = I2C(0)
             sensor = qmi8658c.QMI8658C(i2c)
 
             acc_x, acc_y, acc_z = sensor.acceleration
-            gyro_x, gyro_y, gyro_z = sensor.gyro
+            gyro_x, gyro_y, gyro_z = sensor.angular_velocity
             temperature = sensor.temperature
     """
 
@@ -232,20 +211,29 @@ class QMI8658C:  # pylint: disable=too-many-instance-attributes
 
     @property
     def acceleration(self):
-        """Acceleration X, Y, and Z axis data in :math:`m/s^2`"""
+        """Acceleration X, Y, and Z axis data expressed in g."""
         self.i2c.readfrom_mem_into(self.address, _QMI8658C_ACCEL_OUT, self._accel_buf)
         raw_x, raw_y, raw_z = struct.unpack_from("<hhh", self._accel_buf)
 
-        # setup range dependant scaling
-        accel_x = (raw_x / self._acc_scale) * STANDARD_GRAVITY
-        accel_y = (raw_y / self._acc_scale) * STANDARD_GRAVITY
-        accel_z = (raw_z / self._acc_scale) * STANDARD_GRAVITY
+        accel_x = raw_x / self._acc_scale
+        accel_y = raw_y / self._acc_scale
+        accel_z = raw_z / self._acc_scale
 
         return (accel_x, accel_y, accel_z)
 
     @property
-    def gyro(self):
-        """Gyroscope X, Y, and Z axis data in :math:`rad/s`"""
+    def acceleration_m_s2(self):
+        """Acceleration X, Y, and Z axis data expressed in :math:`m/s^2`."""
+        accel_g = self.acceleration
+        return (
+            accel_g[0] * STANDARD_GRAVITY,
+            accel_g[1] * STANDARD_GRAVITY,
+            accel_g[2] * STANDARD_GRAVITY,
+        )
+
+    @property
+    def angular_velocity(self):
+        """Gyroscope X, Y, and Z axis data in :math:`rad/s`."""
         self.i2c.readfrom_mem_into(self.address, _QMI8658C_GYRO_OUT, self._accel_buf)
         raw_x, raw_y, raw_z = struct.unpack_from("<hhh", self._accel_buf)
 
@@ -255,6 +243,11 @@ class QMI8658C:  # pylint: disable=too-many-instance-attributes
         gyro_z = radians(raw_z / self._gyro_scale)
 
         return (gyro_x, gyro_y, gyro_z)
+
+    @property
+    def gyro(self):  # pragma: no cover - kept for backward compatibility
+        """Backward-compatible alias for :py:meth:`angular_velocity`."""
+        return self.angular_velocity
 
     @property
     def raw_acc_gyro(self):
@@ -401,21 +394,3 @@ class QMI8658C:  # pylint: disable=too-many-instance-attributes
         reg &= ~mask
         reg |= (value << shift) & mask
         self._write_u8(register, reg)
-
-if __name__ == "__main__":
-    import time
-    from machine import I2C, Pin  # type: ignore
-
-    i2c = I2C(1, scl=Pin(12), sda=Pin(11))
-    sensor = QMI8658C(i2c)
-    print(f"Sensor Revision ID: {sensor.revision_id}")
-
-    while True:
-        ac = sensor.acceleration
-        gy = sensor.gyro
-        print(f"Acceleration: X:{ac[0]:.2f}, Y:{ac[1]:.2f}, Z:{ac[2]:.2f} m/s^2")
-        print(f"Gyro X:{gy[0]:.2f}, Y:{gy[1]:.2f}, Z:{gy[2]:.2f} rad/s")
-        print(f"Temperature: {sensor.temperature:.2f} C")
-        print(f"Timestamp: {sensor.timestamp}")
-
-        time.sleep(0.25)

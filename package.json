@@ -1,0 +1,8 @@
+{
+    "urls": [
+        ["qmi8658c/__init__.py", "github:sebromero/micropython-qmi8658c/src/qmi8658c/__init__.py"],
+        ["qmi8658c/qmi8658c.py", "github:sebromero/micropython-qmi8658c/src/qmi8658c/qmi8658c.py"]
+    ],
+    "deps": [],
+    "version": "1.0.0"
+}

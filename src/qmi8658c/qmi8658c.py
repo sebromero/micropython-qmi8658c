@@ -182,9 +182,9 @@ class QMI8658C:  # pylint: disable=too-many-instance-attributes
         self._write_u8(0x07, 0x00)
         # REG CTRL7 : Enable Gyroscope And Accelerometer
         sleep(0.01)
-        self.accelerometer_enable = 1
+        self.accelerometer_enabled = True
         sleep(0.1)
-        self.gyro_enable = 1
+        self.gyro_enabled = True
         sleep(0.1)
 
     @property
@@ -297,7 +297,7 @@ class QMI8658C:  # pylint: disable=too-many-instance-attributes
         if value < 0 or value > 15 or 9 <= value <= 11:
             raise ValueError("accelerometer_rate must be a AccRate")
 
-        if 12 <= value <= 15 and self.gyro_enable == 1:
+        if 12 <= value <= 15 and self.gyro_enabled:
             raise ValueError("accelerometer low power mode must be a gyro disabled")
 
         self._write_bits(0x03, 0x0F, 0, value)
@@ -346,27 +346,27 @@ class QMI8658C:  # pylint: disable=too-many-instance-attributes
         sleep(0.01)
 
     @property
-    def accelerometer_enable(self) -> int:
-        """Enable / disable accelerometer"""
-        return self._read_bits(0x08, 0x01, 0)
+    def accelerometer_enabled(self) -> bool:
+        """Enable / disable accelerometer."""
+        return bool(self._read_bits(0x08, 0x01, 0))
 
-    @accelerometer_enable.setter
-    def accelerometer_enable(self, value: int) -> None:
-        if value < 0 or value > 1:
-            raise ValueError("accelerometer_enable must be a 0/1")
-        self._write_bits(0x08, 0x01, 0, value)
+    @accelerometer_enabled.setter
+    def accelerometer_enabled(self, value: bool) -> None:
+        if value not in (True, False, 0, 1):
+            raise ValueError("accelerometer_enabled must be True/False")
+        self._write_bits(0x08, 0x01, 0, 1 if value else 0)
         sleep(0.1)
 
     @property
-    def gyro_enable(self) -> int:
-        """Enable / disable gyroscope"""
-        return self._read_bits(0x08, 0x02, 1)
+    def gyro_enabled(self) -> bool:
+        """Enable / disable gyroscope."""
+        return bool(self._read_bits(0x08, 0x02, 1))
 
-    @gyro_enable.setter
-    def gyro_enable(self, value: int) -> None:
-        if value < 0 or value > 1:
-            raise ValueError("gyro_enable must be a 0/1")
-        self._write_bits(0x08, 0x02, 1, value)
+    @gyro_enabled.setter
+    def gyro_enabled(self, value: bool) -> None:
+        if value not in (True, False, 0, 1):
+            raise ValueError("gyro_enabled must be True/False")
+        self._write_bits(0x08, 0x02, 1, 1 if value else 0)
         sleep(0.1)
 
     # ---------------------------------------------------------------------
